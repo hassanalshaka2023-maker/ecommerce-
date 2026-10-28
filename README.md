@@ -112,3 +112,4 @@ This exact flow was run against a live instance of this API during development (
 
 - `Product` intentionally has **no stock/quantity field**. Inventory tracking is split into its own service under Requirement 2 (Inter-Service Communication, via gRPC against a separate warehouse service with its own database), so keeping `Product` stock-free now avoids rework later.
 - `OrderItem` snapshots the unit price at the time of purchase, so later price changes on a product don't retroactively change past orders' totals.
+test
