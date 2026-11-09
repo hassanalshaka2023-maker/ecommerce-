@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsNumber,
+  IsInt,
   IsNumberString,
   IsOptional,
   IsString,
@@ -29,9 +29,9 @@ export class CreateProductDto {
   @MaxLength(60)
   category: string;
 
-  @ApiProperty({ type: Number, example: 10 })
+  @ApiProperty({ type: Number, example: 10, description: 'Initial stock, kept by the inventory service' })
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
   @Min(0)
   quantity: number;
 }

@@ -26,7 +26,9 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('E-Commerce Platform API')
-    .setDescription('Requirement 1 — API Design & Security')
+    .setDescription(
+      'Requirement 1 — API Design & Security · Requirement 2 — inventory over gRPC',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

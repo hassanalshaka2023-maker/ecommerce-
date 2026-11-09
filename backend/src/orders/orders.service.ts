@@ -1,13 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
-  RequestTimeoutException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity.js';
 import { OrderItem } from './entities/order-item.entity.js';
 import { Product } from '../products/entities/product.entity.js';
@@ -16,115 +17,81 @@ import { OrderStatus } from '../common/enums/order-status.enum.js';
 import type { AuthenticatedUser } from '../users/auth/jwt-payload.interface.js';
 import { Role } from '../common/enums/role.enum.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import { WarehouseService } from '../warehouses/warehouse.service.js';
+import { InventoryClient } from '../inventory/inventory.client.js';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectRepository(Order)
     private readonly ordersRepository: Repository<Order>,
-    private readonly dataSource: DataSource,
+    @InjectRepository(OrderItem)
+    private readonly orderItemsRepository: Repository<OrderItem>,
+    @InjectRepository(Product)
+    private readonly productsRepository: Repository<Product>,
     private readonly notificationsService: NotificationsService,
-    private readonly warehouseService: WarehouseService,
+    private readonly inventoryClient: InventoryClient,
+    private readonly configService: ConfigService,
   ) {}
 
+  /**
+   * 1. Check the products exist and price the order (local database).
+   * 2. Ask the inventory service to reserve every item in one call.
+   * 3. Save the order. If saving fails, release the reservation (compensation),
+   *    because the two databases cannot share one transaction.
+   */
   async create(userId: string, dto: CreateOrderDto): Promise<Order> {
-    const createdOrder = await this.dataSource.transaction(async (manager) => {
-      // Prepare a timeout mechanism to prevent long-running transactions
-      let isTimeout = false;
-      let timeoutId;
-      timeoutId = setTimeout(() => {
-        isTimeout = true;
-      }, 5 * 1000); // 5 seconds timeout
+    const productIds = [...new Set(dto.items.map((line) => line.productId))];
+    const products = await this.productsRepository.findBy({ id: In(productIds) });
+    const productsById = new Map(products.map((product) => [product.id, product]));
 
-      // Helper function to check the timeout before any sensitive database operation
-      const checkTimeout = () => {
-        // if (isTimeout)
-        //   throw new RequestTimeoutException(
-        //     'The request took too long to process, Please try again later.',
-        //   );
-      };
-
-      const productRepository = manager.getRepository(Product);
-      const orderItems: OrderItem[] = [];
-      let totalPrice = 0;
-
-      for (const line of dto.items) {
-        checkTimeout(); // Check the timeout before starting to check the next product
-
-        const product = await productRepository.findOne({
-          where: { id: line.productId },
-          relations: { warehouse: true },
-        });
-        if (!product)
-          throw new BadRequestException(
-            `Product ${line.productId} does not exist`,
-          );
-
-        const productWarehouse = product.warehouse;
-        if (!productWarehouse)
-          throw new BadRequestException(
-            `Product ${line.productId} lacks stock data`,
-          );
-
-        if (productWarehouse.quantity < line.quantity)
-          throw new BadRequestException(
-            `The requested quantity is not available`,
-          );
-
-        const currentVersion = productWarehouse.version;
-        const newQuantity = productWarehouse.quantity - line.quantity;
-
-        // Simulate a delay in checking the product
-        if (userId === '742cc46a-8e52-4495-9a51-e30682ca8aff')
-          await new Promise((res) => setTimeout(res, 10 * 1000));
-
-        checkTimeout(); // Check the timeout before modifying the database
-
-        const updatedRecordsCount = await this.warehouseService.update(
-          productWarehouse.id,
-          currentVersion,
-          newQuantity,
-          manager,
-        );
-
-        if (updatedRecordsCount === 0)
-          throw new ConflictException(
-            `The product was modified by another request`,
-          );
-        checkTimeout(); // Check the timeout after modifying the database
-
-        totalPrice += Number(product.price) * line.quantity;
-
-        const orderItem = manager.getRepository(OrderItem).create({
-          productId: product.id,
-          quantity: line.quantity,
-          unitPrice: product.price,
-        });
-        orderItems.push(orderItem);
+    let totalPrice = 0;
+    const orderItems = dto.items.map((line) => {
+      const product = productsById.get(line.productId);
+      if (!product) {
+        throw new BadRequestException(`Product ${line.productId} does not exist`);
       }
-
-      checkTimeout(); // Check the timeout one last time before saving the final order
-
-      const order = manager.getRepository(Order).create({
-        userId,
-        status: OrderStatus.PENDING,
-        totalPrice: totalPrice.toFixed(2),
-        items: orderItems,
+      totalPrice += Number(product.price) * line.quantity;
+      return this.orderItemsRepository.create({
+        productId: product.id,
+        quantity: line.quantity,
+        unitPrice: product.price,
       });
-
-      // // Simulate a delay for testing the timeout
-      // await new Promise((res) => setTimeout(res, 10000));
-
-      // checkTimeout(); // Check the timeout one last time before saving the final order
-
-      const savedOrder = await manager.getRepository(Order).save(order);
-
-      // Cancel the timeout if the operation completes successfully before the 5 seconds
-      clearTimeout(timeoutId);
-
-      return savedOrder;
     });
+
+    // The order id doubles as the reservation reference in the inventory service.
+    const orderRef = randomUUID();
+    try {
+      await this.inventoryClient.reserve(
+        orderRef,
+        dto.items.map(({ productId, quantity }) => ({ productId, quantity })),
+      );
+    } catch (error) {
+      // On a timeout the reservation may still have gone through on the other
+      // side, so give it back. Release is a no-op if nothing was reserved.
+      if (error instanceof ServiceUnavailableException) {
+        void this.inventoryClient.releaseQuietly(orderRef);
+      }
+      throw error;
+    }
+
+    let createdOrder: Order;
+    try {
+      if (this.configService.get<string>('SIMULATE_ORDER_SAVE_FAILURE') === 'true') {
+        throw new Error('Simulated order save failure (SIMULATE_ORDER_SAVE_FAILURE=true)');
+      }
+      createdOrder = await this.ordersRepository.save(
+        this.ordersRepository.create({
+          id: orderRef,
+          userId,
+          status: OrderStatus.PENDING,
+          totalPrice: totalPrice.toFixed(2),
+          items: orderItems,
+        }),
+      );
+    } catch (error) {
+      await this.inventoryClient.releaseQuietly(orderRef);
+      throw error;
+    }
 
     await this.notificationsService.create(
       userId,

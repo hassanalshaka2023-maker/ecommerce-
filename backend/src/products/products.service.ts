@@ -1,10 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { rm } from 'node:fs/promises';
+import {
+  BadGatewayException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { QueryProductsDto } from './dto/query-products.dto.js';
-import { WarehouseService } from '../warehouses/warehouse.service.js';
+import { InventoryClient } from '../inventory/inventory.client.js';
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -14,44 +20,53 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+export interface ProductWithStock extends Product {
+  /** null when the inventory service could not be reached. */
+  availableQuantity: number | null;
+  stockAvailable: boolean;
+}
+
+function withStock(product: Product, availableQuantity: number | null): ProductWithStock {
+  return Object.assign(product, {
+    availableQuantity,
+    stockAvailable: availableQuantity !== null,
+  });
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
-    private readonly dataSource: DataSource,
-    private readonly warehouseService: WarehouseService,
+    private readonly inventoryClient: InventoryClient,
   ) {}
 
   async create(
     dto: CreateProductDto,
     imageUrl: string | null,
-  ): Promise<Product> {
-    return this.dataSource.transaction(async (manager) => {
-      const productRepository = manager.getRepository(Product);
-
-      const product = productRepository.create({
+  ): Promise<ProductWithStock> {
+    const product = await this.productsRepository.save(
+      this.productsRepository.create({
         name: dto.name,
         description: dto.description,
         price: dto.price,
         category: dto.category,
         imageUrl,
-      });
+      }),
+    );
 
-      const savedProduct = await productRepository.save(product);
+    // The stock lives in another service and database, so there is no shared
+    // transaction: if the inventory service refuses, undo the product by hand.
+    let quantity: number;
+    try {
+      quantity = await this.inventoryClient.setStock(product.id, dto.quantity);
+    } catch (error) {
+      await this.productsRepository.delete({ id: product.id });
+      if (imageUrl) await rm(`.${imageUrl}`, { force: true });
+      throw error;
+    }
 
-      const savedWarehouse = await this.warehouseService.create(
-        {
-          quantity: dto.quantity,
-        },
-        savedProduct.id,
-        manager,
-      );
-
-      savedProduct.warehouse = savedWarehouse;
-
-      return savedProduct;
-    });
+    return withStock(product, quantity);
   }
 
   async findAll(query: QueryProductsDto): Promise<PaginatedResult<Product>> {
@@ -73,11 +88,27 @@ export class ProductsService {
     };
   }
 
-  async findOne(id: string): Promise<Product> {
+  async findOne(id: string): Promise<ProductWithStock> {
     const product = await this.productsRepository.findOne({ where: { id } });
 
     if (!product) throw new NotFoundException('Product not found');
 
-    return product;
+    // Product details still load when the inventory service is down; only the
+    // stock figure is missing.
+    try {
+      const quantity = await this.inventoryClient.getStock(id);
+      return withStock(product, quantity);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return withStock(product, 0);
+      }
+      if (
+        error instanceof ServiceUnavailableException ||
+        error instanceof BadGatewayException
+      ) {
+        return withStock(product, null);
+      }
+      throw error;
+    }
   }
 }
