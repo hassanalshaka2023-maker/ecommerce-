@@ -250,7 +250,8 @@ describe('Products', () => {
       .field('name', overrides.name ?? unique('Product'))
       .field('description', 'A product used in tests')
       .field('price', overrides.price ?? '19.99')
-      .field('category', overrides.category ?? unique('category'));
+      .field('category', overrides.category ?? unique('category'))
+      .field('quantity', '10');
   }
 
   it('GET /api/v1/products is public and paginated', async () => {
@@ -317,6 +318,7 @@ describe('Products', () => {
       .field('name', unique('Product'))
       .field('price', '9.99')
       .field('category', unique('category'))
+      .field('quantity', '10')
       .attach('image', Buffer.from('fake-image-bytes'), { filename: 'photo.png', contentType: 'image/png' });
     expect(withImage.status).toBe(201);
     expect(withImage.body.imageUrl).toMatch(/^\/uploads\/products\//);
@@ -369,7 +371,8 @@ describe('Orders', () => {
       .field('name', 'Shared Test Product')
       .field('description', 'Used across the Orders suite')
       .field('price', '10.00')
-      .field('category', 'orders-test');
+      .field('category', 'orders-test')
+      .field('quantity', '1000');
     productId = productRes.body.id;
   });
 
@@ -558,7 +561,8 @@ describe('Notifications', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .field('name', 'Notif Product')
       .field('price', '5.00')
-      .field('category', 'notif-test');
+      .field('category', 'notif-test')
+      .field('quantity', '10');
 
     const userA = await request(server)
       .post('/api/v1/auth/register')

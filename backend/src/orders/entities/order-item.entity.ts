@@ -21,7 +21,7 @@ export class OrderItem {
   @Column({ name: 'order_id' })
   orderId: string;
 
-  @ManyToOne(() => Product, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, { eager: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'product_id' })
   product: Relation<Product>;
 

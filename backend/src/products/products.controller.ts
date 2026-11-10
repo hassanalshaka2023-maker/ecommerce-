@@ -48,7 +48,7 @@ export class ProductsController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['name', 'price', 'category'],
+      required: ['name', 'price', 'category', 'quantity'],
       properties: {
         name: { type: 'string', example: 'Wireless Headphones' },
         description: { type: 'string', example: 'Over-ear, noise cancelling' },
@@ -59,7 +59,11 @@ export class ProductsController {
         },
         category: { type: 'string', example: 'electronics' },
         image: { type: 'string', format: 'binary' },
-        quantity: { type: 'number', example: 10 },
+        quantity: {
+          type: 'integer',
+          example: 10,
+          description: 'Initial stock, kept by the inventory service',
+        },
       },
     },
   })
@@ -104,7 +108,11 @@ export class ProductsController {
   }
 
   @Get(':id')
-  @ApiOkResponse({ description: 'A single product' })
+  @ApiOkResponse({
+    description:
+      'A single product with its available stock. If the inventory service is down, ' +
+      'availableQuantity is null and stockAvailable is false.',
+  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.findOne(id);
   }
