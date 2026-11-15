@@ -1,20 +1,16 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
-import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import type { AuthenticatedUser } from '../users/auth/jwt-payload.interface.js';
+import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Auth, type AuthUser, CurrentUser } from '../common/auth.js';
 import { NotificationsService } from './notifications.service.js';
 
 @ApiTags('notifications')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
-@Controller({ path: 'notifications', version: '1' })
+@Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(private readonly notifications: NotificationsService) {}
 
   @Get()
-  @ApiOkResponse({ description: "The current user's notifications" })
-  findMine(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.notificationsService.findForUser(currentUser.id);
+  @Auth()
+  findAll(@CurrentUser() user: AuthUser) {
+    return this.notifications.findAll(user.id);
   }
 }

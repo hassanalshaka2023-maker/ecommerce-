@@ -1,146 +1,71 @@
-import { randomUUID } from 'node:crypto';
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { Order } from './entities/order.entity.js';
-import { OrderItem } from './entities/order-item.entity.js';
-import { Product } from '../products/entities/product.entity.js';
-import { CreateOrderDto } from './dto/create-order.dto.js';
-import { OrderStatus } from '../common/enums/order-status.enum.js';
-import type { AuthenticatedUser } from '../users/auth/jwt-payload.interface.js';
-import { Role } from '../common/enums/role.enum.js';
+import { Repository } from 'typeorm';
+import { type AuthUser, Role } from '../common/auth.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import { InventoryClient } from '../inventory/inventory.client.js';
+import { ProductsService } from '../products/products.service.js';
+import { Order, OrderStatus } from './order.entity.js';
+import { CreateOrderDto } from './orders.dto.js';
 
 @Injectable()
 export class OrdersService {
   constructor(
-    @InjectRepository(Order)
-    private readonly ordersRepository: Repository<Order>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemsRepository: Repository<OrderItem>,
-    @InjectRepository(Product)
-    private readonly productsRepository: Repository<Product>,
-    private readonly notificationsService: NotificationsService,
-    private readonly inventoryClient: InventoryClient,
-    private readonly configService: ConfigService,
+    @InjectRepository(Order) private readonly orders: Repository<Order>,
+    private readonly products: ProductsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
-  /**
-   * 1. Check the products exist and price the order (local database).
-   * 2. Ask the inventory service to reserve every item in one call.
-   * 3. Save the order. If saving fails, release the reservation (compensation),
-   *    because the two databases cannot share one transaction.
-   */
-  async create(userId: string, dto: CreateOrderDto): Promise<Order> {
-    const productIds = [...new Set(dto.items.map((line) => line.productId))];
-    const products = await this.productsRepository.findBy({ id: In(productIds) });
-    const productsById = new Map(products.map((product) => [product.id, product]));
-
-    let totalPrice = 0;
-    const orderItems = dto.items.map((line) => {
-      const product = productsById.get(line.productId);
-      if (!product) {
-        throw new BadRequestException(`Product ${line.productId} does not exist`);
-      }
-      totalPrice += Number(product.price) * line.quantity;
-      return this.orderItemsRepository.create({
-        productId: product.id,
-        quantity: line.quantity,
-        unitPrice: product.price,
-      });
-    });
-
-    // The order id doubles as the reservation reference in the inventory service.
-    const orderRef = randomUUID();
-    try {
-      await this.inventoryClient.reserve(
-        orderRef,
-        dto.items.map(({ productId, quantity }) => ({ productId, quantity })),
-      );
-    } catch (error) {
-      // On a timeout the reservation may still have gone through on the other
-      // side, so give it back. Release is a no-op if nothing was reserved.
-      if (error instanceof ServiceUnavailableException) {
-        void this.inventoryClient.releaseQuietly(orderRef);
-      }
-      throw error;
-    }
-
-    let createdOrder: Order;
-    try {
-      if (this.configService.get<string>('SIMULATE_ORDER_SAVE_FAILURE') === 'true') {
-        throw new Error('Simulated order save failure (SIMULATE_ORDER_SAVE_FAILURE=true)');
-      }
-      createdOrder = await this.ordersRepository.save(
-        this.ordersRepository.create({
-          id: orderRef,
-          userId,
-          status: OrderStatus.PENDING,
-          totalPrice: totalPrice.toFixed(2),
-          items: orderItems,
-        }),
-      );
-    } catch (error) {
-      await this.inventoryClient.releaseQuietly(orderRef);
-      throw error;
-    }
-
-    await this.notificationsService.create(
-      userId,
-      `Your order #${createdOrder.id} has been created.`,
+  async create(userId: string, { items }: CreateOrderDto) {
+    const prices = await this.products.getPrices(items.map((i) => i.productId));
+    const lines = items.map(({ productId, quantity }) => ({
+      productId,
+      quantity,
+      unitPrice: prices[productId],
+    }));
+    const total = lines.reduce(
+      (sum, line) => sum + Number(line.unitPrice) * line.quantity,
+      0,
     );
 
-    return createdOrder;
+    const order = await this.orders.save({
+      userId,
+      totalPrice: total.toFixed(2),
+      items: lines,
+    });
+    await this.notifications.notify(userId, `Order ${order.id} was created`);
+    return order;
   }
 
-  async findForUser(currentUser: AuthenticatedUser): Promise<Order[]> {
-    if (currentUser.role === Role.ADMIN) {
-      return this.ordersRepository.find({ order: { createdAt: 'DESC' } });
-    }
-    return this.ordersRepository.find({
-      where: { userId: currentUser.id },
+  findAll(user: AuthUser) {
+    return this.orders.find({
+      where: user.role === Role.ADMIN ? {} : { userId: user.id },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string, currentUser: AuthenticatedUser): Promise<Order> {
-    const order = await this.ordersRepository.findOne({ where: { id } });
-    if (!order) {
-      throw new NotFoundException('Order not found');
+  async findOne(id: string, user: AuthUser) {
+    const order = await this.orders.findOneBy({ id });
+    if (!order) throw new NotFoundException('Order not found');
+    // The core rule: a customer can only open their own orders.
+    if (order.userId !== user.id && user.role !== Role.ADMIN) {
+      throw new ForbiddenException('This order belongs to another user');
     }
-
-    this.assertCanAccess(order, currentUser);
     return order;
   }
 
-  async updateStatus(id: string, status: OrderStatus): Promise<Order> {
-    const order = await this.ordersRepository.findOne({ where: { id } });
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-
+  async updateStatus(id: string, status: OrderStatus) {
+    const order = await this.orders.findOneBy({ id });
+    if (!order) throw new NotFoundException('Order not found');
     order.status = status;
-    const saved = await this.ordersRepository.save(order);
-    await this.notificationsService.create(
+    await this.orders.save(order);
+    await this.notifications.notify(
       order.userId,
-      `Your order #${order.id} status changed to ${status}.`,
+      `Order ${id} is now ${status}`,
     );
-    return saved;
-  }
-
-  private assertCanAccess(order: Order, currentUser: AuthenticatedUser): void {
-    const isOwner = order.userId === currentUser.id;
-    const isAdmin = currentUser.role === Role.ADMIN;
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('You do not have access to this order');
-    }
+    return order;
   }
 }

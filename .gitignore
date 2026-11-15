@@ -16,8 +16,7 @@
 !**/.env.example
 
 # Uploaded files
-**/uploads/products/*
-!**/uploads/products/.gitkeep
+**/uploads/
 
 # OS/editor
 **/.DS_Store

@@ -5,8 +5,7 @@ coverage/
 .env
 *.local
 
-uploads/products/*
-!uploads/products/.gitkeep
+uploads/
 
 npm-debug.log*
 .DS_Store
