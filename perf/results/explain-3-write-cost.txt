@@ -1,0 +1,85 @@
+Cost of the new index on writes: insert 50,000 orders, three times each way. Every run is rolled back.
+
+=== WITH the (user_id, created_at) index ===
+BEGIN
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Insert on orders (actual rows=0 loops=1)
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           ->  Seq Scan on users (actual rows=1 loops=1)
+   ->  Function Scan on generate_series (actual rows=50000 loops=1)
+ Planning Time: 0.870 ms
+ Execution Time: 346.751 ms
+(7 rows)
+
+ROLLBACK
+BEGIN
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Insert on orders (actual rows=0 loops=1)
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           ->  Seq Scan on users (actual rows=1 loops=1)
+   ->  Function Scan on generate_series (actual rows=50000 loops=1)
+ Planning Time: 0.139 ms
+ Execution Time: 323.794 ms
+(7 rows)
+
+ROLLBACK
+BEGIN
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Insert on orders (actual rows=0 loops=1)
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           ->  Seq Scan on users (actual rows=1 loops=1)
+   ->  Function Scan on generate_series (actual rows=50000 loops=1)
+ Planning Time: 0.118 ms
+ Execution Time: 338.408 ms
+(7 rows)
+
+ROLLBACK
+=== WITHOUT it (index dropped inside the transaction, then rolled back) ===
+BEGIN
+DROP INDEX
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Insert on orders (actual rows=0 loops=1)
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           ->  Seq Scan on users (actual rows=1 loops=1)
+   ->  Function Scan on generate_series (actual rows=50000 loops=1)
+ Planning Time: 0.153 ms
+ Execution Time: 271.196 ms
+(7 rows)
+
+ROLLBACK
+BEGIN
+DROP INDEX
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Insert on orders (actual rows=0 loops=1)
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           ->  Seq Scan on users (actual rows=1 loops=1)
+   ->  Function Scan on generate_series (actual rows=50000 loops=1)
+ Planning Time: 0.122 ms
+ Execution Time: 296.144 ms
+(7 rows)
+
+ROLLBACK
+BEGIN
+DROP INDEX
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Insert on orders (actual rows=0 loops=1)
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           ->  Seq Scan on users (actual rows=1 loops=1)
+   ->  Function Scan on generate_series (actual rows=50000 loops=1)
+ Planning Time: 0.132 ms
+ Execution Time: 276.188 ms
+(7 rows)
+
+ROLLBACK

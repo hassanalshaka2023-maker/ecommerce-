@@ -105,7 +105,7 @@ describe('Requirement 2 — warehouse service over gRPC', () => {
     const orders = await api()
       .get('/api/v1/orders')
       .auth(token, { type: 'bearer' });
-    expect(orders.body).toHaveLength(0);
+    expect(orders.body.total).toBe(0);
   });
 
   it('PROOF: 20 customers race for the last unit and exactly one wins', async () => {

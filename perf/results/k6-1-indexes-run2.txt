@@ -1,0 +1,33 @@
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 15995   528.573521/s
+    checks_succeeded...: 100.00% 15995 out of 15995
+    checks_failed......: 0.00%   0 out of 15995
+
+    ✓ status is 200 or 304
+
+    HTTP
+    http_req_duration..............: p(50)=90.26ms p(95)=126.19ms p(99)=152.16ms avg=93.67ms  max=681.16ms
+      { expected_response:true }...: p(50)=90.26ms p(95)=126.19ms p(99)=152.16ms avg=93.67ms  max=681.16ms
+      { name:my-notifications }....: p(50)=79.42ms p(95)=111.01ms p(99)=131.73ms avg=82.25ms  max=588.85ms
+      { name:my-orders }...........: p(50)=83.02ms p(95)=115.16ms p(99)=137.13ms avg=86.24ms  max=656.62ms
+      { name:product-details }.....: p(50)=99.47ms p(95)=136.97ms p(99)=161.82ms avg=103.08ms max=658.29ms
+      { name:products-category }...: p(50)=89.04ms p(95)=123.35ms p(99)=150.59ms avg=92.52ms  max=628.65ms
+      { name:products-list }.......: p(50)=89.93ms p(95)=122.2ms  p(99)=144.46ms avg=92.96ms  max=681.16ms
+    http_req_failed................: 0.00%  0 out of 15999
+    http_reqs......................: 15999  528.705706/s
+
+    EXECUTION
+    iteration_duration.............: p(50)=90.42ms p(95)=126.37ms p(99)=152.38ms avg=93.85ms  max=681.9ms 
+    iterations.....................: 15995  528.573521/s
+    vus............................: 50     min=50         max=50
+    vus_max........................: 50     min=50         max=50
+
+    NETWORK
+    data_received..................: 215 MB 7.1 MB/s
+    data_sent......................: 2.5 MB 81 kB/s
+
+
+

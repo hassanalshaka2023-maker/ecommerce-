@@ -10,6 +10,7 @@ import { OrdersService } from './orders.service.js';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem]),
+    TypeOrmModule.forFeature([Order, OrderItem], 'replica'),
     ProductsModule,
     NotificationsModule,
     WarehouseModule,

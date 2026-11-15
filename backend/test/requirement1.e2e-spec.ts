@@ -295,15 +295,15 @@ describe('Requirement 1 — API design & security', () => {
       const mine = await api()
         .get('/api/v1/orders')
         .auth(a.token, { type: 'bearer' });
-      expect(mine.body.length).toBeGreaterThan(0);
+      expect(mine.body.items.length).toBeGreaterThan(0);
       expect(
-        mine.body.every((o: { userId: string }) => o.userId === a.id),
+        mine.body.items.every((o: { userId: string }) => o.userId === a.id),
       ).toBe(true);
 
       const all = await api()
         .get('/api/v1/orders')
         .auth(adminToken, { type: 'bearer' });
-      const owners = all.body.map((o: { userId: string }) => o.userId);
+      const owners = all.body.items.map((o: { userId: string }) => o.userId);
       expect(owners).toEqual(expect.arrayContaining([a.id, b.id]));
     });
   });

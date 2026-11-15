@@ -10,10 +10,36 @@ services:
       - "5433:5432" # 5433 on the host, so it never clashes with a locally installed Postgres
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: postgres -c hba_file=/etc/postgresql/pg_hba.conf
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 3s
       retries: 10
+
+  # Read-only copy of db. On its first start it copies the primary (pg_basebackup),
+  # and -R makes it follow the primary's changes from then on.
+  db-replica:
+    image: postgres:16-alpine
+    user: postgres
+    environment:
+      PGPASSWORD: postgres
+    command: >
+      sh -c "[ -s /var/lib/postgresql/data/PG_VERSION ] ||
+      pg_basebackup -h db -U postgres -D /var/lib/postgresql/data -R -X stream;
+      chmod 700 /var/lib/postgresql/data;
+      exec postgres"
+    ports:
+      - "5435:5432"
+    volumes:
+      - replica_data:/var/lib/postgresql/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 3s
+      retries: 20
 
   api:
     build:
@@ -22,17 +48,27 @@ services:
         proto: ./proto
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/ecommerce
+      DATABASE_REPLICA_URL: postgres://postgres:postgres@db-replica:5432/ecommerce
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
       ADMIN_EMAIL: admin@shop.local
       ADMIN_PASSWORD: Admin12345
       WAREHOUSE_URL: warehouse:50051
+      REDIS_URL: redis://redis:6379
+      DB_LOGGING: ${DB_LOGGING:-false} # true prints every SQL query in the api logs
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
+      db-replica:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
 
   warehouse-db:
     image: postgres:16-alpine
@@ -65,6 +101,7 @@ services:
 
 volumes:
   db_data:
+  replica_data:
   uploads_data:
   warehouse_data:
 

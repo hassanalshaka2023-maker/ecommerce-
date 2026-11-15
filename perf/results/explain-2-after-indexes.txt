@@ -1,0 +1,86 @@
+=== GET /orders (one customer, newest first) ===
+                                                                    QUERY PLAN                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=549.51..549.88 rows=150 width=58) (actual time=0.690..0.695 rows=150 loops=1)
+   Sort Key: orders.created_at DESC
+   Sort Method: quicksort  Memory: 37kB
+   InitPlan 1 (returns $0)
+     ->  Index Scan using "UQ_97672ac88f789774dd47f7c8be3" on users  (cost=0.28..8.29 rows=1 width=16) (actual time=0.027..0.028 rows=1 loops=1)
+           Index Cond: ((email)::text = 'customer1@seed.local'::text)
+   ->  Bitmap Heap Scan on orders  (cost=5.58..535.79 rows=150 width=58) (actual time=0.080..0.648 rows=150 loops=1)
+         Recheck Cond: (user_id = $0)
+         Heap Blocks: exact=145
+         ->  Bitmap Index Scan on "IDX_fbfc1475fc6797244d160068cb"  (cost=0.00..5.55 rows=150 width=0) (actual time=0.056..0.056 rows=150 loops=1)
+               Index Cond: (user_id = $0)
+ Planning Time: 1.317 ms
+ Execution Time: 0.819 ms
+(13 rows)
+
+=== items of one order ===
+                                                                              QUERY PLAN                                                                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using "IDX_145532db85752b29c57d2b7b1f" on order_items  (cost=0.90..12.93 rows=2 width=58) (actual time=0.050..0.051 rows=1 loops=1)
+   Index Cond: (order_id = $0)
+   InitPlan 1 (returns $0)
+     ->  Limit  (cost=0.42..0.47 rows=1 width=16) (actual time=0.025..0.025 rows=1 loops=1)
+           ->  Index Only Scan using "PK_710e2d4957aa5878dfe94e4ac2f" on orders  (cost=0.42..14760.44 rows=300008 width=16) (actual time=0.024..0.024 rows=1 loops=1)
+                 Heap Fetches: 0
+ Planning Time: 0.448 ms
+ Execution Time: 0.077 ms
+(8 rows)
+
+=== GET /notifications (one customer, newest first) ===
+                                                                    QUERY PLAN                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=533.67..534.05 rows=150 width=95) (actual time=0.597..0.602 rows=150 loops=1)
+   Sort Key: notifications.created_at DESC
+   Sort Method: quicksort  Memory: 42kB
+   InitPlan 1 (returns $0)
+     ->  Index Scan using "UQ_97672ac88f789774dd47f7c8be3" on users  (cost=0.28..8.29 rows=1 width=16) (actual time=0.011..0.011 rows=1 loops=1)
+           Index Cond: ((email)::text = 'customer1@seed.local'::text)
+   ->  Bitmap Heap Scan on notifications  (cost=5.58..519.96 rows=150 width=95) (actual time=0.057..0.569 rows=150 loops=1)
+         Recheck Cond: (user_id = $0)
+         Heap Blocks: exact=145
+         ->  Bitmap Index Scan on "IDX_310667f935698fcd8cb319113a"  (cost=0.00..5.55 rows=150 width=0) (actual time=0.039..0.039 rows=150 loops=1)
+               Index Cond: (user_id = $0)
+ Planning Time: 0.445 ms
+ Execution Time: 0.657 ms
+(13 rows)
+
+=== GET /products page 21 ===
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=730.42..730.47 rows=20 width=139) (actual time=1.435..1.437 rows=20 loops=1)
+   ->  Sort  (cost=729.42..754.45 rows=10012 width=139) (actual time=1.376..1.399 rows=420 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 119kB
+         ->  Seq Scan on products  (cost=0.00..243.12 rows=10012 width=139) (actual time=0.008..0.446 rows=10012 loops=1)
+ Planning Time: 0.401 ms
+ Execution Time: 1.480 ms
+(7 rows)
+
+=== GET /products?category=category-3 ===
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=170.71..170.76 rows=20 width=139) (actual time=0.266..0.268 rows=20 loops=1)
+   ->  Sort  (cost=170.71..171.96 rows=500 width=139) (actual time=0.265..0.266 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 29kB
+         ->  Bitmap Heap Scan on products  (cost=8.16..157.41 rows=500 width=139) (actual time=0.048..0.210 rows=500 loops=1)
+               Recheck Cond: ((category)::text = 'category-3'::text)
+               Heap Blocks: exact=143
+               ->  Bitmap Index Scan on "IDX_c3932231d2385ac248d0888d95"  (cost=0.00..8.04 rows=500 width=0) (actual time=0.033..0.033 rows=500 loops=1)
+                     Index Cond: ((category)::text = 'category-3'::text)
+ Planning Time: 0.038 ms
+ Execution Time: 0.333 ms
+(11 rows)
+
+=== table and index sizes ===
+     table     |  data   | indexes 
+---------------+---------+---------
+ notifications | 36 MB   | 13 MB
+ order_items   | 53 MB   | 36 MB
+ orders        | 51 MB   | 20 MB
+ products      | 1184 kB | 496 kB
+(4 rows)
+
