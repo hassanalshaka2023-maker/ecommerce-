@@ -54,6 +54,7 @@ services:
       ADMIN_PASSWORD: Admin12345
       WAREHOUSE_URL: warehouse:50051
       REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       DB_LOGGING: ${DB_LOGGING:-false} # true prints every SQL query in the api logs
     ports:
       - "3001:3000"
@@ -64,6 +65,48 @@ services:
         condition: service_healthy
       db-replica:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Sends the confirmation email of every new order. Same code as the api, a different program:
+  # it only reads the "emails" queue, and the api never waits for it.
+  worker:
+    build:
+      context: ./backend
+      additional_contexts:
+        proto: ./proto
+    command: ["node", "dist/worker/main.js"]
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      # By default the emails go to Mailpit (http://localhost:8025). For a real provider,
+      # put the SMTP_* values in a .env file next to this one (see .env.example).
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-shop@example.com}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management page: http://localhost:15672 (guest / guest)
+    volumes:
+      - rabbit_data:/var/lib/rabbitmq # queues and their messages survive a restart
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 20
+
+  # Catches every email in a web page, so the whole flow can be seen without a real mail account.
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025" # web page
+      - "1025:1025" # SMTP
 
   redis:
     image: redis:7-alpine
@@ -104,4 +147,5 @@ volumes:
   replica_data:
   uploads_data:
   warehouse_data:
+  rabbit_data:
 

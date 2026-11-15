@@ -4,8 +4,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from './common/cache.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { EventsModule } from './events/events.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { ProductsModule } from './products/products.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 import { UsersModule } from './users/users.module.js';
 import { WarehouseModule } from './warehouse/warehouse.module.js';
 
@@ -46,6 +48,8 @@ import { WarehouseModule } from './warehouse/warehouse.module.js';
     OrdersModule,
     NotificationsModule,
     WarehouseModule,
+    EventsModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

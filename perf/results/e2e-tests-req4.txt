@@ -1,0 +1,75 @@
+
+ RUN  v4.1.12 C:/Users/DELL/Desktop/E-commerce-project/local/backend
+
+stdout | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > answers the order at once, and the worker sends the confirmation email later
+email sent (message 1a664d29-6c97-4d74-b066-44095dd75a40)
+
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > answers the order at once, and the worker sends the confirmation email later 579ms
+stdout | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: stopping the worker, even in the middle of an email, loses no email
+email sent (message b38bd552-ee76-4bf5-b4eb-0d0948cd4b32)
+
+stdout | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: stopping the worker, even in the middle of an email, loses no email
+email sent (message 45592f31-e594-4b0e-be96-28232e076520)
+
+stdout | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: stopping the worker, even in the middle of an email, loses no email
+email sent (message cb47e486-7c4e-4421-b279-7fd54fb438ef)
+
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: stopping the worker, even in the middle of an email, loses no email 583ms
+stderr | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > retries a temporary failure, and the email still arrives
+email failed (attempt 1/3) -> test.emails.retry: Error: mail server busy
+
+stdout | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > retries a temporary failure, and the email still arrives
+email sent (message 070ef8c1-3f7b-4a13-b894-c51b207a3dc0)
+
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > retries a temporary failure, and the email still arrives 564ms
+stderr | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: an email that always fails is retried, then moved to the dead-letter queue
+email failed (attempt 1/3) -> test.emails.retry: Error: mail server down
+
+stderr | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: an email that always fails is retried, then moved to the dead-letter queue
+email failed (attempt 2/3) -> test.emails.retry: Error: mail server down
+
+stderr | test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: an email that always fails is retried, then moved to the dead-letter queue
+email failed (attempt 3/3) -> test.emails.dlq: Error: mail server down
+
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > queue and worker > PROOF: an email that always fails is retried, then moved to the dead-letter queue 791ms
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > real-time channels > refuses a connection without a valid token 34ms
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > real-time channels > closes the connection when the token expires 414ms
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > real-time channels > lets a customer follow only their own order, and only an admin join the admin channel 335ms
+ ✓ test/requirement4.e2e-spec.ts > Requirement 4 — queues, worker and real-time updates > real-time channels > PROOF: a new order shows at once on the admin channel, and the approval at once on the customer page 874ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > puts the version in the path 24ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > returns every error in the same shape 11ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > serves interactive Swagger docs 3ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > sends the basic security headers 5ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > users > registers new users as customers and rejects duplicate emails 76ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > users > rejects invalid input with 422, including trying to set the role 12ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > users > logs in with the right password only 209ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > lets only an admin add products 94ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > stores the uploaded image and serves it back 17ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > rejects non-image files and invalid prices with 422 8ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > lists products publicly, filtered by category and paginated 42ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > returns 404 for an unknown id and 400 for a malformed one 7ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > creates an order and computes the total on the server 117ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > rejects unknown products, duplicated lines and bad quantities with 422 85ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > PROOF: a customer cannot open or change an order that is not theirs 271ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > validates status changes 142ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > lists only your own orders, while an admin sees everyone’s 371ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > notifications > notifies only the order owner, on creation and on status change 341ms
+ ✓ test/requirement1.e2e-spec.ts > login rate limiting > blocks the 6th login attempt within a minute with 429 151ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > lets only an admin set stock, and never below zero 137ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > shows the live stock on the product page 33ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > takes the ordered quantity out of the warehouse 141ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > reserves all items or none, and saves no order when stock is short 147ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > PROOF: 20 customers race for the last unit and exactly one wins 579ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > lets only an admin edit a product, and validates the changes 149ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > PROOF: an edited product shows at once, on its page and in the list 64ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > PROOF: the edit shows at once even while the replica is behind 67ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > PROOF: a customer sees a new order at once even while the replica is behind 170ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > never caches stock: a change in the warehouse shows on the next read 50ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > answers 304 with no body while the product is unchanged, and 200 after it changes 52ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > returns orders one page at a time 169ms
+
+ Test Files  4 passed (4)
+      Tests  39 passed (39)
+   Start at  17:02:01
+   Duration  21.94s (transform 423ms, setup 0ms, import 9.84s, tests 11.38s, environment 0ms)
+

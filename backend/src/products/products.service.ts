@@ -103,12 +103,16 @@ export class ProductsService {
       : this.replica;
   }
 
-  /** For other modules: they ask for prices here instead of reading our table. */
-  async getPrices(ids: string[]): Promise<Record<string, string>> {
+  /** For other modules: they ask for names and prices here instead of reading our table. */
+  async getForOrder(
+    ids: string[],
+  ): Promise<Record<string, { name: string; price: string }>> {
     const products = await this.products.findBy({ id: In(ids) });
     if (products.length !== ids.length) {
       throw new UnprocessableEntityException('Some products do not exist');
     }
-    return Object.fromEntries(products.map((p) => [p.id, p.price]));
+    return Object.fromEntries(
+      products.map((p) => [p.id, { name: p.name, price: p.price }]),
+    );
   }
 }
