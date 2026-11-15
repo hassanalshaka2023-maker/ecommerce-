@@ -11,13 +11,18 @@ import {
   UnprocessableEntityException,
   UploadedFile,
   UseInterceptors,
+  Put,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Express } from 'express';
 import { diskStorage } from 'multer';
 import { Auth, Role } from '../common/auth.js';
-import { CreateProductDto, QueryProductsDto } from './products.dto.js';
+import {
+  CreateProductDto,
+  QueryProductsDto,
+  SetStockDto,
+} from './products.dto.js';
 import { ProductsService } from './products.service.js';
 
 const imageUpload = FileInterceptor('image', {
@@ -62,5 +67,11 @@ export class ProductsController {
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.products.findOne(id);
+  }
+
+  @Put(':id/stock')
+  @Auth(Role.ADMIN)
+  setStock(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetStockDto) {
+    return this.products.setStock(id, dto.quantity);
   }
 }

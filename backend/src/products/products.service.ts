@@ -7,11 +7,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Product } from './product.entity.js';
 import { CreateProductDto, QueryProductsDto } from './products.dto.js';
+import { WarehouseService } from '../warehouse/warehouse.service.js';
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product) private readonly products: Repository<Product>,
+    private readonly warehouse: WarehouseService,
   ) {}
 
   create(
@@ -34,7 +36,25 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.products.findOneBy({ id });
     if (!product) throw new NotFoundException('Product not found');
-    return product;
+    try {
+      return Object.assign(product, {
+        stock: await this.warehouse.getStock(id),
+      });
+    } catch (error) {
+      // The product is still shown when the warehouse is down, only without stock.
+      return Object.assign(product, {
+        stock: null,
+        stockError: (error as Error).message,
+      });
+    }
+  }
+
+  async setStock(id: string, quantity: number) {
+    if (!(await this.products.existsBy({ id }))) {
+      throw new NotFoundException('Product not found');
+    }
+    await this.warehouse.setStock(id, quantity);
+    return { productId: id, stock: quantity };
   }
 
   /** For other modules: they ask for prices here instead of reading our table. */
