@@ -3,76 +3,25 @@ name: ecommerce-platform
 services:
   db:
     image: postgres:16-alpine
-    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ecommerce
     ports:
-      - "5432:5432"
-      - "5433:5432" # extra port for local tooling, in case 5432 is taken by a native Postgres install
+      - "5433:5432" # 5433 on the host, so it never clashes with a locally installed Postgres
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 3s
       retries: 10
-
-  inventory-db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: inventory
-    ports:
-      - "5434:5432"
-    volumes:
-      - inventory_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  inventory:
-    build:
-      context: ./inventory-service
-    restart: unless-stopped
-    environment:
-      # Tables are created by TypeORM synchronize, same as the api service.
-      NODE_ENV: development
-      GRPC_URL: 0.0.0.0:50051
-      DATABASE_HOST: inventory-db
-      DATABASE_PORT: 5432
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_NAME: inventory
-      INVENTORY_SIMULATED_DELAY_MS: ${INVENTORY_SIMULATED_DELAY_MS:-0}
-    ports:
-      - "50051:50051"
-    depends_on:
-      inventory-db:
-        condition: service_healthy
 
   api:
-    build:
-      context: ./backend
-    restart: unless-stopped
+    build: ./backend
     environment:
-      NODE_ENV: development
-      PORT: 3000
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_NAME: ecommerce
+      DATABASE_URL: postgres://postgres:postgres@db:5432/ecommerce
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
-      JWT_EXPIRES_IN: 1h
-      INVENTORY_GRPC_URL: inventory:50051
-      INVENTORY_TIMEOUT_MS: 3000
-      SIMULATE_ORDER_SAVE_FAILURE: ${SIMULATE_ORDER_SAVE_FAILURE:-false}
+      ADMIN_EMAIL: admin@shop.local
+      ADMIN_PASSWORD: Admin12345
     ports:
       - "3000:3000"
     volumes:
@@ -80,12 +29,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      # Started, not healthy: the api must keep running when inventory is down.
-      inventory:
-        condition: service_started
 
 volumes:
   db_data:
   uploads_data:
-  inventory_db_data:
 

@@ -1,41 +1,61 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  type OnModuleInit,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity.js';
-import { Role } from '../common/enums/role.enum.js';
+import { Role } from '../common/auth.js';
+import { User } from './user.entity.js';
+import { LoginDto, RegisterDto } from './users.dto.js';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   constructor(
-    @InjectRepository(User)
-    private readonly usersRepository: Repository<User>,
+    @InjectRepository(User) private readonly users: Repository<User>,
+    private readonly jwt: JwtService,
   ) {}
 
-  async create(data: { name: string; email: string; passwordHash: string; role?: Role }): Promise<User> {
-    const existing = await this.findByEmail(data.email);
-    if (existing) {
-      throw new ConflictException('A user with this email already exists');
+  // Creates the first admin on startup; there is deliberately no endpoint for it.
+  async onModuleInit() {
+    const { ADMIN_EMAIL: email, ADMIN_PASSWORD: password } = process.env;
+    if (email && password && !(await this.users.existsBy({ email }))) {
+      const passwordHash = await bcrypt.hash(password, 10);
+      await this.users.save({
+        name: 'Admin',
+        email,
+        passwordHash,
+        role: Role.ADMIN,
+      });
     }
-
-    const user = this.usersRepository.create({
-      name: data.name,
-      email: data.email,
-      passwordHash: data.passwordHash,
-      role: data.role ?? Role.CUSTOMER,
-    });
-
-    return this.usersRepository.save(user);
   }
 
-  findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+  async register({ name, email, password }: RegisterDto) {
+    if (await this.users.existsBy({ email })) {
+      throw new ConflictException('Email is already registered');
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    return this.issueToken(
+      await this.users.save({ name, email, passwordHash }),
+    );
   }
 
-  async findById(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) {
-      throw new NotFoundException('User not found');
+  async login({ email, password }: LoginDto) {
+    const user = await this.users.findOneBy({ email });
+    // Same message for both cases, so attackers can't tell which emails exist.
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      throw new UnauthorizedException('Invalid email or password');
     }
-    return user;
+    return this.issueToken(user);
+  }
+
+  private issueToken({ id, name, email, role }: User) {
+    return {
+      accessToken: this.jwt.sign({ sub: id, role }),
+      user: { id, name, email, role },
+    };
   }
 }

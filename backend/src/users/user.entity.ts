@@ -2,12 +2,9 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Role } from '../../common/enums/role.enum.js';
-import { Order } from '../../orders/entities/order.entity.js';
-import { Notification } from '../../notifications/entities/notification.entity.js';
+import { Role } from '../common/auth.js';
 
 @Entity('users')
 export class User {
@@ -28,10 +25,4 @@ export class User {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
-
-  @OneToMany(() => Order, (order) => order.user)
-  orders: Order[];
-
-  @OneToMany(() => Notification, (notification) => notification.user)
-  notifications: Notification[];
 }
