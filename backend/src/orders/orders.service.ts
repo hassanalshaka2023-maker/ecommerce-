@@ -9,9 +9,11 @@ import { randomUUID } from 'node:crypto';
 import { In, Repository } from 'typeorm';
 import { type AuthUser, Role } from '../common/auth.js';
 import { CacheService } from '../common/cache.service.js';
+import { EventsService } from '../events/events.service.js';
 import { PageQueryDto } from '../common/page-query.dto.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { ProductsService } from '../products/products.service.js';
+import { UsersService } from '../users/users.service.js';
 import { WarehouseService } from '../warehouse/warehouse.service.js';
 import { Order, OrderItem, OrderStatus } from './order.entity.js';
 import { CreateOrderDto } from './orders.dto.js';
@@ -29,14 +31,18 @@ export class OrdersService {
     private readonly notifications: NotificationsService,
     private readonly warehouse: WarehouseService,
     private readonly cache: CacheService,
+    private readonly events: EventsService,
+    private readonly users: UsersService,
   ) {}
 
   async create(userId: string, { items }: CreateOrderDto) {
-    const prices = await this.products.getPrices(items.map((i) => i.productId));
+    const products = await this.products.getForOrder(
+      items.map((i) => i.productId),
+    );
     const lines = items.map(({ productId, quantity }) => ({
       productId,
       quantity,
-      unitPrice: prices[productId],
+      unitPrice: products[productId].price,
     }));
     const total = lines.reduce(
       (sum, line) => sum + Number(line.unitPrice) * line.quantity,
@@ -56,19 +62,39 @@ export class OrdersService {
       throw error;
     }
 
+    const customer = await this.users.contactOf(userId);
     let order: Order;
     try {
-      order = await this.orders.save({
-        id: orderId,
-        userId,
-        totalPrice: total.toFixed(2),
-        items: lines,
+      // The order and its "order.created" event are saved together, or not at all.
+      order = await this.orders.manager.transaction(async (tx) => {
+        const saved = await tx.save(Order, {
+          id: orderId,
+          userId,
+          totalPrice: total.toFixed(2),
+          items: lines,
+        });
+        await this.events.record(tx, 'order.created', {
+          order: {
+            id: saved.id,
+            userId,
+            status: saved.status,
+            totalPrice: saved.totalPrice,
+            createdAt: saved.createdAt,
+            items: lines.map((line) => ({
+              ...line,
+              name: products[line.productId].name,
+            })),
+          },
+          customer,
+        });
+        return saved;
       });
     } catch (error) {
       await this.warehouse.release(orderId).catch(() => {});
       throw error;
     }
 
+    void this.events.flush(); // sends the event now; the user is not kept waiting for it
     await this.cache.markWrite(userId);
     await this.notifications.notify(userId, `Order ${order.id} was created`);
     return order;
@@ -110,7 +136,16 @@ export class OrdersService {
   async updateStatus(id: string, status: OrderStatus) {
     const order = await this.load(id);
     order.status = status;
-    await this.orders.save(order);
+    await this.orders.manager.transaction(async (tx) => {
+      await tx.save(order);
+      await this.events.record(tx, 'order.status_changed', {
+        orderId: id,
+        userId: order.userId,
+        status,
+        updatedAt: order.updatedAt,
+      });
+    });
+    void this.events.flush();
     await this.cache.markWrite(order.userId);
     await this.notifications.notify(
       order.userId,
