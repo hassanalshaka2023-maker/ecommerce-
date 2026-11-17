@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="660" viewBox="0 0 1180 660" font-family="Segoe UI, Arial, sans-serif" font-size="13">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="40" y="36" font-size="20" font-weight="bold" fill="#2d3e50">E-Commerce ERD - Requirement 1</text>
+<rect x="40" y="60" width="300" height="192" rx="6" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<path d="M40 96V66a6 6 0 0 1 6-6H334a6 6 0 0 1 6 6V96Z" fill="#2d3e50"/>
+<text x="190" y="84" text-anchor="middle" fill="#fff" font-weight="bold" font-size="15">users</text>
+<text x="52" y="114" font-weight="bold">id</text>
+<text x="175" y="114" fill="#4a5568">uuid</text>
+<text x="328" y="114" text-anchor="end" fill="#b7791f" font-weight="bold">PK</text>
+<rect x="41" y="122" width="298" height="26" fill="#f2f5f8"/>
+<text x="52" y="140" font-weight="normal">name</text>
+<text x="175" y="140" fill="#4a5568">varchar</text>
+<text x="52" y="166" font-weight="normal">email</text>
+<text x="175" y="166" fill="#4a5568">varchar</text>
+<text x="328" y="166" text-anchor="end" fill="#6b46c1" font-weight="bold">UK</text>
+<rect x="41" y="174" width="298" height="26" fill="#f2f5f8"/>
+<text x="52" y="192" font-weight="normal">password_hash</text>
+<text x="175" y="192" fill="#4a5568">varchar</text>
+<text x="52" y="218" font-weight="normal">role</text>
+<text x="175" y="218" fill="#4a5568">enum(customer, admin)</text>
+<rect x="41" y="226" width="298" height="26" fill="#f2f5f8"/>
+<text x="52" y="244" font-weight="normal">created_at</text>
+<text x="175" y="244" fill="#4a5568">timestamp</text>
+<rect x="440" y="60" width="300" height="192" rx="6" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<path d="M440 96V66a6 6 0 0 1 6-6H734a6 6 0 0 1 6 6V96Z" fill="#2d3e50"/>
+<text x="590" y="84" text-anchor="middle" fill="#fff" font-weight="bold" font-size="15">orders</text>
+<text x="452" y="114" font-weight="bold">id</text>
+<text x="575" y="114" fill="#4a5568">uuid</text>
+<text x="728" y="114" text-anchor="end" fill="#b7791f" font-weight="bold">PK</text>
+<rect x="441" y="122" width="298" height="26" fill="#f2f5f8"/>
+<text x="452" y="140" font-weight="normal">user_id</text>
+<text x="575" y="140" fill="#4a5568">uuid</text>
+<text x="728" y="140" text-anchor="end" fill="#718096" font-weight="bold">ref</text>
+<text x="452" y="166" font-weight="normal">status</text>
+<text x="575" y="166" fill="#4a5568">enum (5 states)</text>
+<rect x="441" y="174" width="298" height="26" fill="#f2f5f8"/>
+<text x="452" y="192" font-weight="normal">total_price</text>
+<text x="575" y="192" fill="#4a5568">decimal(10,2)</text>
+<text x="452" y="218" font-weight="normal">created_at</text>
+<text x="575" y="218" fill="#4a5568">timestamp</text>
+<rect x="441" y="226" width="298" height="26" fill="#f2f5f8"/>
+<text x="452" y="244" font-weight="normal">updated_at</text>
+<text x="575" y="244" fill="#4a5568">timestamp</text>
+<rect x="840" y="60" width="300" height="166" rx="6" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<path d="M840 96V66a6 6 0 0 1 6-6H1134a6 6 0 0 1 6 6V96Z" fill="#2d3e50"/>
+<text x="990" y="84" text-anchor="middle" fill="#fff" font-weight="bold" font-size="15">order_items</text>
+<text x="852" y="114" font-weight="bold">id</text>
+<text x="975" y="114" fill="#4a5568">uuid</text>
+<text x="1128" y="114" text-anchor="end" fill="#b7791f" font-weight="bold">PK</text>
+<rect x="841" y="122" width="298" height="26" fill="#f2f5f8"/>
+<text x="852" y="140" font-weight="normal">order_id</text>
+<text x="975" y="140" fill="#4a5568">uuid</text>
+<text x="1128" y="140" text-anchor="end" fill="#2b6cb0" font-weight="bold">FK</text>
+<text x="852" y="166" font-weight="normal">product_id</text>
+<text x="975" y="166" fill="#4a5568">uuid</text>
+<text x="1128" y="166" text-anchor="end" fill="#718096" font-weight="bold">ref</text>
+<rect x="841" y="174" width="298" height="26" fill="#f2f5f8"/>
+<text x="852" y="192" font-weight="normal">quantity</text>
+<text x="975" y="192" fill="#4a5568">int</text>
+<text x="852" y="218" font-weight="normal">unit_price</text>
+<text x="975" y="218" fill="#4a5568">decimal(10,2)</text>
+<rect x="840" y="340" width="300" height="218" rx="6" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<path d="M840 376V346a6 6 0 0 1 6-6H1134a6 6 0 0 1 6 6V376Z" fill="#2d3e50"/>
+<text x="990" y="364" text-anchor="middle" fill="#fff" font-weight="bold" font-size="15">products</text>
+<text x="852" y="394" font-weight="bold">id</text>
+<text x="975" y="394" fill="#4a5568">uuid</text>
+<text x="1128" y="394" text-anchor="end" fill="#b7791f" font-weight="bold">PK</text>
+<rect x="841" y="402" width="298" height="26" fill="#f2f5f8"/>
+<text x="852" y="420" font-weight="normal">name</text>
+<text x="975" y="420" fill="#4a5568">varchar</text>
+<text x="852" y="446" font-weight="normal">description</text>
+<text x="975" y="446" fill="#4a5568">text (nullable)</text>
+<rect x="841" y="454" width="298" height="26" fill="#f2f5f8"/>
+<text x="852" y="472" font-weight="normal">price</text>
+<text x="975" y="472" fill="#4a5568">decimal(10,2)</text>
+<text x="852" y="498" font-weight="normal">category</text>
+<text x="975" y="498" fill="#4a5568">varchar (indexed)</text>
+<rect x="841" y="506" width="298" height="26" fill="#f2f5f8"/>
+<text x="852" y="524" font-weight="normal">image_url</text>
+<text x="975" y="524" fill="#4a5568">varchar (nullable)</text>
+<text x="852" y="550" font-weight="normal">created_at</text>
+<text x="975" y="550" fill="#4a5568">timestamp</text>
+<rect x="40" y="340" width="300" height="140" rx="6" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<path d="M40 376V346a6 6 0 0 1 6-6H334a6 6 0 0 1 6 6V376Z" fill="#2d3e50"/>
+<text x="190" y="364" text-anchor="middle" fill="#fff" font-weight="bold" font-size="15">notifications</text>
+<text x="52" y="394" font-weight="bold">id</text>
+<text x="175" y="394" fill="#4a5568">uuid</text>
+<text x="328" y="394" text-anchor="end" fill="#b7791f" font-weight="bold">PK</text>
+<rect x="41" y="402" width="298" height="26" fill="#f2f5f8"/>
+<text x="52" y="420" font-weight="normal">user_id</text>
+<text x="175" y="420" fill="#4a5568">uuid</text>
+<text x="328" y="420" text-anchor="end" fill="#718096" font-weight="bold">ref</text>
+<text x="52" y="446" font-weight="normal">message</text>
+<text x="175" y="446" fill="#4a5568">varchar</text>
+<rect x="41" y="454" width="298" height="26" fill="#f2f5f8"/>
+<text x="52" y="472" font-weight="normal">created_at</text>
+<text x="175" y="472" fill="#4a5568">timestamp</text>
+<line x1="340" y1="140" x2="440" y2="140" stroke="#2d3e50" stroke-width="1.5" stroke-dasharray="6 4"/>
+<line x1="350" y1="148" x2="350" y2="132" stroke="#2d3e50" stroke-width="1.5"/><line x1="356" y1="148" x2="356" y2="132" stroke="#2d3e50" stroke-width="1.5"/>
+<line x1="426" y1="140" x2="440" y2="132" stroke="#2d3e50" stroke-width="1.5"/><line x1="426" y1="140" x2="440" y2="148" stroke="#2d3e50" stroke-width="1.5"/><circle cx="419" cy="140" r="5" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<text x="390" y="130" text-anchor="middle" font-style="italic" fill="#4a5568">places</text>
+<line x1="740" y1="140" x2="840" y2="140" stroke="#2d3e50" stroke-width="1.5"/>
+<line x1="750" y1="148" x2="750" y2="132" stroke="#2d3e50" stroke-width="1.5"/><line x1="756" y1="148" x2="756" y2="132" stroke="#2d3e50" stroke-width="1.5"/>
+<line x1="826" y1="140" x2="840" y2="132" stroke="#2d3e50" stroke-width="1.5"/><line x1="826" y1="140" x2="840" y2="148" stroke="#2d3e50" stroke-width="1.5"/><line x1="820" y1="132" x2="820" y2="148" stroke="#2d3e50" stroke-width="1.5"/>
+<text x="790" y="130" text-anchor="middle" font-style="italic" fill="#4a5568">contains</text>
+<line x1="990" y1="340" x2="990" y2="226" stroke="#2d3e50" stroke-width="1.5" stroke-dasharray="6 4"/>
+<line x1="982" y1="330" x2="998" y2="330" stroke="#2d3e50" stroke-width="1.5"/><line x1="982" y1="324" x2="998" y2="324" stroke="#2d3e50" stroke-width="1.5"/>
+<line x1="990" y1="240" x2="998" y2="226" stroke="#2d3e50" stroke-width="1.5"/><line x1="990" y1="240" x2="982" y2="226" stroke="#2d3e50" stroke-width="1.5"/><circle cx="990" cy="247" r="5" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<text x="1002" y="287" font-style="italic" fill="#4a5568">appears in</text>
+<line x1="190" y1="252" x2="190" y2="340" stroke="#2d3e50" stroke-width="1.5" stroke-dasharray="6 4"/>
+<line x1="198" y1="262" x2="182" y2="262" stroke="#2d3e50" stroke-width="1.5"/><line x1="198" y1="268" x2="182" y2="268" stroke="#2d3e50" stroke-width="1.5"/>
+<line x1="190" y1="326" x2="182" y2="340" stroke="#2d3e50" stroke-width="1.5"/><line x1="190" y1="326" x2="198" y2="340" stroke="#2d3e50" stroke-width="1.5"/><circle cx="190" cy="319" r="5" fill="#fff" stroke="#2d3e50" stroke-width="1.5"/>
+<text x="202" y="300" font-style="italic" fill="#4a5568">receives</text>
+<line x1="40" y1="610" x2="90" y2="610" stroke="#2d3e50" stroke-width="1.5"/>
+<text x="100" y="614">real foreign key (FK), ON DELETE CASCADE</text>
+<line x1="440" y1="610" x2="490" y2="610" stroke="#2d3e50" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="500" y="614">logical reference (ref): id only, no FK, owned by another module</text>
+<text x="40" y="640" fill="#4a5568">orders.status: pending | confirmed | shipped | delivered | cancelled</text>
+<text x="440" y="640" fill="#4a5568">order_items.unit_price = product price at purchase time</text>
+</svg>
