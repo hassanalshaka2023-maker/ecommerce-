@@ -1,183 +1,154 @@
-# Distributed Real-Time E-Commerce Platform — Requirements 1 & 2
+# Distributed Real-Time E-Commerce Platform
 
-- **Requirement 1 — API Design & Security:** the main NestJS API (`backend/`), organized into four modules (Users, Products, Orders, Notifications), backed by PostgreSQL.
-- **Requirement 2 — Inter-Service Communication:** a separate inventory service (`inventory-service/`) with its own PostgreSQL database, which the API talks to over **gRPC**.
+A NestJS API split into four modules (Users, Products, Orders, Notifications), backed by PostgreSQL, plus a separate **warehouse service written in Python** that owns the stock and talks to the API over **gRPC**. Reads are sped up with indexes, a **Redis** cache, a **read replica** and HTTP **ETags**. Order events go through **RabbitMQ**: a separate **worker** sends the confirmation email, and the screens are updated live over **Socket.IO**. Everything runs in Docker.
 
-Everything runs inside Docker.
-
-## Stack
-
-- **Framework:** NestJS 12 (TypeScript, ESM)
-- **Database:** PostgreSQL + TypeORM
-- **Auth:** JWT (passport-jwt), bcrypt password hashing
-- **Docs:** Swagger / OpenAPI (interactive, try-it-out)
-- **Service-to-service:** gRPC (`@nestjs/microservices`, `@grpc/grpc-js`), contract in a `.proto` file
-- **Containerization:** Docker + Docker Compose
-
-## Running the project
+## Run it
 
 ```bash
 docker compose up --build
 ```
 
-This starts four containers:
-
-- `db` — PostgreSQL 16 for the API
-- `api` — the NestJS API, on `http://localhost:3000`
-- `inventory-db` — PostgreSQL 16 owned by the inventory service only (host port `5434`)
-- `inventory` — the inventory gRPC server, on `localhost:50051`
-
-Once it's up:
-
-- API base URL: `http://localhost:3000/api/v1`
-- Swagger docs (interactive): `http://localhost:3000/api/docs`
-- Health check: `http://localhost:3000/api/v1/health`
-
-No manual `.env` setup is required to run via Docker — `docker-compose.yml` already sets matching credentials for every container. For local development without Docker, copy `backend/.env.example` to `backend/.env` and `inventory-service/.env.example` to `inventory-service/.env`, and point the `DATABASE_*` settings at your PostgreSQL instances.
-
-## Project structure
-
-```
-backend/
-  src/
-    users/        # register, login, roles, JWT strategy
-      auth/
-      entities/
-      dto/
-    products/      # create (admin, with image upload), list (paginated, filterable), view one
-      entities/
-      dto/
-    orders/        # create, view (owner or admin only), change status (admin only)
-      entities/
-      dto/
-    notifications/  # per-user notification feed
-      entities/
-    inventory/     # gRPC client for the inventory service (deadline + error mapping)
-    proto/         # inventory.proto — the contract (copy of the one below)
-    common/        # guards, decorators, enums, error filter shared across modules
-  test/            # end-to-end tests for Requirement 1 and Requirement 2
-  uploads/products/ # uploaded product images (served at /uploads/products/...)
-  Dockerfile
-inventory-service/
-  src/
-    inventory/     # gRPC handlers, stock + reservation tables, reserve/release logic
-    proto/         # inventory.proto — the contract (must match backend/src/proto)
-  Dockerfile
-docker-compose.yml
-```
-
-## Roles & security model
-
-Two roles: `customer` (default on registration) and `admin`. There is no public "become admin" endpoint on purpose — promote a user by running, against the running `db` container:
-
-```sql
-UPDATE users SET role = 'admin' WHERE email = 'someone@example.com';
-```
-
-Enforced rules:
-
-- Every route except `GET /products`, `GET /products/:id`, `POST /auth/register` and `POST /auth/login` requires a valid `Authorization: Bearer <token>` header.
-- Only an `admin` can create products or change an order's status.
-- A customer can only see and list their **own** orders; an admin can see all of them. Attempting to open someone else's order returns `403 Forbidden`.
-- Login is rate-limited to 5 attempts per minute per client.
-
-## API overview
-
-| Method | Path | Access | Description |
-|---|---|---|---|
-| POST | `/auth/register` | public | Create an account, returns a JWT |
-| POST | `/auth/login` | public (rate-limited) | Returns a JWT |
-| GET | `/users/me` | authenticated | Current user's profile |
-| GET | `/products` | public | Paginated list, `?page=&limit=&category=` |
-| GET | `/products/:id` | public | Single product, with `availableQuantity` from the inventory service |
-| POST | `/products` | admin | Create product, `multipart/form-data` with an `image` file and an initial `quantity` |
-| POST | `/orders` | authenticated | Create an order from a list of `{ productId, quantity }` |
-| GET | `/orders` | authenticated | Own orders (all orders if admin) |
-| GET | `/orders/:id` | owner or admin | A single order |
-| PATCH | `/orders/:id/status` | admin | Change order status |
-| GET | `/notifications` | authenticated | Current user's notifications |
-
-Every error response follows the same shape:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "You do not have access to this order",
-    "statusCode": 403,
-    "path": "/api/v1/orders/...",
-    "timestamp": "..."
-  }
-}
-```
-
-## Demonstrating the required security scenario
-
-1. Register two customers, A and B.
-2. A creates an order: `POST /orders`.
-3. B tries `GET /orders/:id` for A's order with their own token → `403 Forbidden`.
-4. B (a customer) tries `PATCH /orders/:id/status` → `403 Forbidden`.
-5. No token at all on any protected route → `401 Unauthorized`.
-
-This exact flow was run against a live instance of this API during development (register → login → create product as admin → create order → cross-user access attempt → status change attempt) and every response matched the expected status code.
-
-## Requirement 2 — Inventory service over gRPC
-
-### Architecture
-
-```
- client ──HTTP──▶ api (NestJS) ──gRPC──▶ inventory (NestJS gRPC server)
-                    │                       │
-                    ▼                       ▼
-                   db                  inventory-db
-       users, products, orders      stock, reservations
-```
-
-The two services never share a database. The API only knows about stock through the gRPC contract. (The course staff allowed both services to use the same framework, so the inventory service is NestJS too.)
-
-### The contract — `inventory.proto`
-
-| RPC | Purpose |
+| What | Where |
 |---|---|
-| `GetStock(product_id)` | Available quantity of one product (shown on product details) |
-| `Reserve(order_ref, items[])` | Check and reserve **all** items of an order in one call, all or nothing |
-| `Release(order_ref)` | Give back everything an order reserved (compensation); safe to repeat |
-| `SetStock(product_id, quantity)` | Record the initial stock when an admin creates a product (an addition to the three required operations) |
+| API | `http://localhost:3001/api/v1` |
+| Swagger (try every endpoint) | `http://localhost:3001/api/docs` |
+| Database, for tools and tests | `localhost:5433` (user `postgres`, password `postgres`) |
+| Read replica of the database | `localhost:5435` |
+| Redis | `localhost:6379` |
+| RabbitMQ management page | `http://localhost:15672` (`guest` / `guest`) |
+| Mailpit: every email the worker sends | `http://localhost:8025` |
+| Warehouse gRPC service | `localhost:50051` |
+| Warehouse database | `localhost:5434` |
+| Web interface (`cd frontend && npm install && npm run dev`) | `http://localhost:5173` |
 
-### Order flow
+An admin account is created on first start: `admin@shop.local` / `Admin12345` (set in `docker-compose.yml`). Every registration is a `customer`; there is deliberately no endpoint for becoming an admin.
 
-1. The API checks the products exist and prices the order from its own database.
-2. It generates an `order_ref` (which becomes the order id) and calls `Reserve` once for the whole order.
-3. If the reservation is refused, no order is created.
-4. If it succeeds, the order is saved. If that save fails, the API calls `Release(order_ref)`.
+## Tests
 
-### Failure cases
-
-| Case | What happens | What the user sees |
-|---|---|---|
-| Not enough stock | `Reserve` returns `FAILED_PRECONDITION`; its transaction rolls back, so no item of the order is reserved | `400` — `Insufficient stock for product …` |
-| Inventory down or too slow | Every gRPC call has a deadline (`INVENTORY_TIMEOUT_MS`, default 3 s). On a timeout the API also sends a `Release`, in case the reservation went through late | `503` — the inventory service is unavailable / did not respond in time |
-| Order save fails after reserving | The API calls `Release(order_ref)`, which returns the stock and marks the reservation `RELEASED` | `500`, and the stock is back to what it was |
-| Race for the last unit | Each item is taken with one conditional `UPDATE stock SET quantity = quantity - n WHERE product_id = … AND quantity >= n`. Postgres row locks make concurrent reservations of the same product wait for each other, and the second one re-checks the condition and matches no row. A `CHECK (quantity >= 0)` constraint backs this up | Exactly one order succeeds, the rest get `400` |
-
-When the inventory service is down, product details still load, with `availableQuantity: null` and `stockAvailable: false`. Creating a product while it is down is rolled back, so no product exists without stock.
-
-### Demonstrating it
-
-- **Race condition:** create a product with `quantity` 1, then send several `POST /orders` for it at the same moment. One returns `201`, the others `400`.
-- **Inventory stopped:** `docker compose stop inventory`, then place an order → `503` after about 3 seconds. `docker compose start inventory` to bring it back.
-- **Inventory slow:** `INVENTORY_SIMULATED_DELAY_MS=5000 docker compose up -d inventory` makes the service answer late → `503` "did not respond in time".
-- **Save failure:** `SIMULATE_ORDER_SAVE_FAILURE=true docker compose up -d api`, place an order → `500`, and `GET /products/:id` shows the stock unchanged. Set it back to `false` afterwards.
-
-All of these are also covered by `backend/test/requirement2.e2e-spec.ts`, which needs both databases and the inventory service running:
+With everything running (`docker compose up -d`):
 
 ```bash
 cd backend
 npm run test:e2e
 ```
 
-## Notes on design decisions
+The required proof (a customer trying to open or change someone else's order is rejected) is the `PROOF` test in [backend/test/requirement1.e2e-spec.ts](backend/test/requirement1.e2e-spec.ts).
 
-- `Product` has **no stock column**. Stock belongs to the inventory service; the API reads it over gRPC.
-- `OrderItem` snapshots the unit price at the time of purchase, so later price changes on a product don't retroactively change past orders' totals.
+The proof for requirement 2 (20 customers order the last unit at the same moment and exactly one succeeds) is the `PROOF` test in [backend/test/requirement2.e2e-spec.ts](backend/test/requirement2.e2e-spec.ts).
+
+The proofs for requirement 3 (an edited product shows at once, and a customer sees a new order at once, both while the replica is held back) are the `PROOF` tests in [backend/test/requirement3.e2e-spec.ts](backend/test/requirement3.e2e-spec.ts).
+
+The proofs for requirement 4 (stopping the worker loses no email, a failing email ends in the dead-letter queue, a new order and an approval show at once) are the `PROOF` tests in [backend/test/requirement4.e2e-spec.ts](backend/test/requirement4.e2e-spec.ts). They use their own exchange and queues (`test.*`).
+
+## Structure
+
+```
+proto/warehouse.proto        the gRPC contract shared by both services
+warehouse/server.py          the Python warehouse service (stock + reservations)
+frontend/                    React interface
+db/pg_hba.conf               lets the read replica connect to the primary database
+.env.example                 how to send real emails (SMTP settings for the worker)
+perf/                        fake data, the k6 load test and the measured results
+backend/src/
+  main.ts                    starts the app
+  app.setup.ts               security headers, /api/v1, validation, error format, Swagger
+  app.module.ts              database, JWT and the four modules
+  common/
+    auth.ts                  JWT guard, roles, @Auth() and @CurrentUser()
+    all-exceptions.filter.ts one error format for everything
+    cache.service.ts         Redis: cached reads, and who wrote recently
+    page-query.dto.ts        page and limit for every list
+  messaging/broker.ts        RabbitMQ names, event shapes and the connection, shared by the api and the worker
+  events/                    the outbox table and the relay that sends its events to RabbitMQ
+  realtime/                  Socket.IO channels (who may join) and the RabbitMQ listener that feeds them
+  worker/                    the email worker, a separate program (dist/worker/main.js)
+  users/                     register, login (rate-limited), admin seeding
+  products/                  add with image (admin), list with filter + pagination, view one
+  orders/                    create, view (owner or admin), change status (admin)
+  notifications/             each user's notification feed
+  warehouse/                 gRPC client for the warehouse service
+```
+
+Every module has the same five files: `*.entity.ts` (table), `*.dto.ts` (validated input), `*.service.ts` (logic), `*.controller.ts` (routes), `*.module.ts` (wiring).
+
+Each module owns its tables. Other modules reach its data only through its service; for example, Orders calls `ProductsService.getForOrder()` and `UsersService.contactOf()` instead of reading the `products` and `users` tables.
+
+## API
+
+| Method | Path | Who | Notes |
+|---|---|---|---|
+| POST | `/auth/register` | anyone | returns a JWT |
+| POST | `/auth/login` | anyone | 5 attempts per minute per IP |
+| GET | `/products` | anyone | `?category=&page=&limit=` |
+| GET | `/products/:id` | anyone | includes live `stock` from the warehouse (`null` if it is down) |
+| PATCH | `/products/:id` | admin | any of `name`, `description`, `price`, `category` |
+| PUT | `/products/:id/stock` | admin | `{ "quantity" }`, stored in the warehouse |
+| POST | `/products` | admin | `multipart/form-data`, optional `image` (JPEG/PNG/WEBP, max 5 MB) |
+| POST | `/orders` | logged in | `{ "items": [{ "productId", "quantity" }] }`, saved only after the warehouse reserves every item |
+| GET | `/orders` | logged in | own orders; an admin sees all; `?page=&limit=` |
+| GET | `/orders/:id` | owner or admin | anyone else gets `403` |
+| PATCH | `/orders/:id/status` | admin | |
+| GET | `/notifications` | logged in | own notifications |
+
+## Order flow and the warehouse
+
+1. Orders gets the prices from `ProductsService` and generates the order id.
+2. It asks the warehouse to reserve all items in one gRPC call. The warehouse does it in one transaction with `UPDATE stock SET quantity = quantity - q WHERE quantity >= q`, so two orders can never take the same last unit. If any item is short, nothing is reserved and the API returns `409`.
+3. Only then is the order saved. If saving fails, the reservation is released. If the warehouse did not answer in time, the API also releases, since it cannot know whether the reservation happened; releasing twice is harmless.
+4. Every gRPC call has a 2-second deadline, so a stopped warehouse gives a clear `503`/`504` instead of a hanging request.
+
+## Performance (requirement 3)
+
+Measured with k6 against 300,000 orders, one change at a time. From the unoptimized API to the final one: p50 198 → 50 ms, p95 361 → 89 ms, p99 494 → 125 ms, throughput 231 → 911 requests/s. The full report with every step, the numbers and the pictures is [REQUIREMENT_3_REPORT.md](REQUIREMENT_3_REPORT.md); the raw results are in `perf/results/`.
+
+- **Indexes** on `orders(user_id, created_at)`, `order_items(order_id)` and `notifications(user_id, created_at)`; "my orders" went from a full table scan (24.6 ms) to an index lookup (0.8 ms).
+- **Pagination** on `GET /orders`, and the order items of a page are loaded with one query (no N+1).
+- **Redis** caches product lists and product pages for 60 seconds; any product change makes the old entries unreachable. Stock is never cached.
+- **Read replica** (`db-replica`) serves the product, order and notification reads. A user who has just written something reads the primary for a few seconds, so they always see their own change.
+- **ETag**: an unchanged product answers `304` with no body.
+
+Run the load test (fake data first, see the header of each file):
+
+```powershell
+Get-Content perf/seed.sql | docker compose exec -T db psql -U postgres -d ecommerce
+docker compose restart api
+docker run --rm -v ${PWD}/perf:/perf grafana/k6 run /perf/load-test.js
+```
+
+## Events, worker and live updates (requirement 4)
+
+```
+POST /orders ─▶ order + "order.created" row in outbox_events (one transaction) ─▶ 201 at once
+                                  │ relay (right away, and every second)
+                                  ▼
+                       RabbitMQ exchange "orders.events"
+                  ┌───────────────┴────────────────┐
+           queue "emails"                  one temporary queue per api instance
+                  │                                │
+            email worker                    Socket.IO channels
+   (ack only after the email is sent)   "admin" (admins) · "order:<id>" (its owner)
+   fails ─▶ "emails.retry" (5 s) ─▶ back, 3 attempts ─▶ "emails.dlq"
+```
+
+- **The user never waits for the email.** The order is answered at once; the worker sends the email from the queue.
+- **No email is lost.** The event is saved with the order (outbox), so it is sent even if RabbitMQ was down. Queues and messages are durable. The worker acknowledges a message only after the email went out, so a worker that stops or crashes leaves it in the queue for the next one. A failing email is retried twice after 5 seconds, then kept in `emails.dlq`.
+- **Live channels, checked before joining.** The connection needs a valid token and closes when it expires. `admin` (new orders, every status change) is for admins only; `order:<id>` (that order's status) is for its owner or an admin, the same rule as `GET /orders/:id`.
+- **Pages:** *Live dashboard* (admin) and *Track live* (a customer's order).
+
+The emails go to Mailpit by default. For a real mail service, copy `.env.example` to `.env`, fill in the SMTP settings and run `docker compose up -d worker`.
+
+## Status codes and errors
+
+`200` ok · `201` created · `304` not modified (the client's copy is still current) · `400` malformed id in the URL · `401` missing or invalid token · `403` not allowed · `404` not found · `409` email already registered or not enough stock · `422` invalid input · `429` too many login attempts · `503` warehouse unavailable · `504` warehouse did not respond in time
+
+Every error has the same shape:
+
+```json
+{
+  "statusCode": 403,
+  "error": "FORBIDDEN",
+  "message": "This order belongs to another user",
+  "path": "/api/v1/orders/…",
+  "timestamp": "…"
+}
+```
