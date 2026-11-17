@@ -52,6 +52,12 @@ export class UsersService implements OnModuleInit {
     return this.issueToken(user);
   }
 
+  /** For other modules: they ask for a user's contact here instead of reading our table. */
+  async contactOf(id: string) {
+    const { name, email } = await this.users.findOneByOrFail({ id });
+    return { name, email };
+  }
+
   private issueToken({ id, name, email, role }: User) {
     return {
       accessToken: this.jwt.sign({ sub: id, role }),

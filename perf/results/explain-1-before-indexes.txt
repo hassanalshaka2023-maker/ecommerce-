@@ -1,0 +1,99 @@
+=== GET /orders (one customer, newest first) ===
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather Merge  (cost=9074.71..9089.17 rows=124 width=58) (actual time=22.495..24.419 rows=150 loops=1)
+   Workers Planned: 2
+   Params Evaluated: $0
+   Workers Launched: 2
+   InitPlan 1 (returns $0)
+     ->  Index Scan using "UQ_97672ac88f789774dd47f7c8be3" on users  (cost=0.28..8.29 rows=1 width=16) (actual time=0.069..0.070 rows=1 loops=1)
+           Index Cond: ((email)::text = 'customer1@seed.local'::text)
+   ->  Sort  (cost=8066.39..8066.54 rows=62 width=58) (actual time=18.708..18.711 rows=50 loops=3)
+         Sort Key: orders.created_at DESC
+         Sort Method: quicksort  Memory: 29kB
+         Worker 0:  Sort Method: quicksort  Memory: 29kB
+         Worker 1:  Sort Method: quicksort  Memory: 28kB
+         ->  Parallel Seq Scan on orders  (cost=0.00..8064.54 rows=62 width=58) (actual time=2.688..18.617 rows=50 loops=3)
+               Filter: (user_id = $0)
+               Rows Removed by Filter: 99953
+ Planning Time: 1.769 ms
+ Execution Time: 24.589 ms
+(17 rows)
+
+=== items of one order ===
+                                                                              QUERY PLAN                                                                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.47..10949.22 rows=2 width=58) (actual time=12.041..28.391 rows=1 loops=1)
+   Workers Planned: 2
+   Params Evaluated: $0
+   Workers Launched: 2
+   InitPlan 1 (returns $0)
+     ->  Limit  (cost=0.42..0.47 rows=1 width=16) (actual time=1.197..1.198 rows=1 loops=1)
+           ->  Index Only Scan using "PK_710e2d4957aa5878dfe94e4ac2f" on orders  (cost=0.42..13848.54 rows=300008 width=16) (actual time=1.195..1.195 rows=1 loops=1)
+                 Heap Fetches: 0
+   ->  Parallel Seq Scan on order_items  (cost=0.00..9948.55 rows=1 width=58) (actual time=16.563..21.041 rows=0 loops=3)
+         Filter: (order_id = $0)
+         Rows Removed by Filter: 200099
+ Planning Time: 0.425 ms
+ Execution Time: 28.425 ms
+(13 rows)
+
+=== GET /notifications (one customer, newest first) ===
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather Merge  (cost=7188.76..7203.23 rows=124 width=95) (actual time=17.023..19.119 rows=150 loops=1)
+   Workers Planned: 2
+   Params Evaluated: $0
+   Workers Launched: 2
+   InitPlan 1 (returns $0)
+     ->  Index Scan using "UQ_97672ac88f789774dd47f7c8be3" on users  (cost=0.28..8.29 rows=1 width=16) (actual time=0.015..0.015 rows=1 loops=1)
+           Index Cond: ((email)::text = 'customer1@seed.local'::text)
+   ->  Sort  (cost=6180.44..6180.59 rows=62 width=95) (actual time=13.793..13.796 rows=50 loops=3)
+         Sort Key: notifications.created_at DESC
+         Sort Method: quicksort  Memory: 31kB
+         Worker 0:  Sort Method: quicksort  Memory: 30kB
+         Worker 1:  Sort Method: quicksort  Memory: 30kB
+         ->  Parallel Seq Scan on notifications  (cost=0.00..6178.59 rows=62 width=95) (actual time=0.479..13.712 rows=50 loops=3)
+               Filter: (user_id = $0)
+               Rows Removed by Filter: 99956
+ Planning Time: 0.388 ms
+ Execution Time: 19.183 ms
+(17 rows)
+
+=== GET /products page 21 ===
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=730.42..730.47 rows=20 width=139) (actual time=1.917..1.920 rows=20 loops=1)
+   ->  Sort  (cost=729.42..754.45 rows=10012 width=139) (actual time=1.894..1.910 rows=420 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 119kB
+         ->  Seq Scan on products  (cost=0.00..243.12 rows=10012 width=139) (actual time=0.027..0.770 rows=10012 loops=1)
+ Planning Time: 0.397 ms
+ Execution Time: 1.965 ms
+(7 rows)
+
+=== GET /products?category=category-3 ===
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=170.71..170.76 rows=20 width=139) (actual time=0.918..0.920 rows=20 loops=1)
+   ->  Sort  (cost=170.71..171.96 rows=500 width=139) (actual time=0.917..0.918 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 29kB
+         ->  Bitmap Heap Scan on products  (cost=8.16..157.41 rows=500 width=139) (actual time=0.704..0.852 rows=500 loops=1)
+               Recheck Cond: ((category)::text = 'category-3'::text)
+               Heap Blocks: exact=143
+               ->  Bitmap Index Scan on "IDX_c3932231d2385ac248d0888d95"  (cost=0.00..8.04 rows=500 width=0) (actual time=0.657..0.657 rows=500 loops=1)
+                     Index Cond: ((category)::text = 'category-3'::text)
+ Planning Time: 0.061 ms
+ Execution Time: 0.971 ms
+(11 rows)
+
+=== table and index sizes ===
+     table     |  data   | indexes 
+---------------+---------+---------
+ notifications | 36 MB   | 11 MB
+ order_items   | 53 MB   | 23 MB
+ orders        | 51 MB   | 18 MB
+ products      | 1184 kB | 496 kB
+(4 rows)
+

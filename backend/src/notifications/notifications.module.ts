@@ -5,7 +5,10 @@ import { NotificationsController } from './notifications.controller.js';
 import { NotificationsService } from './notifications.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Notification])],
+  imports: [
+    TypeOrmModule.forFeature([Notification]),
+    TypeOrmModule.forFeature([Notification], 'replica'),
+  ],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],

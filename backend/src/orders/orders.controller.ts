@@ -6,9 +6,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Auth, type AuthUser, CurrentUser, Role } from '../common/auth.js';
+import { PageQueryDto } from '../common/page-query.dto.js';
 import { CreateOrderDto, UpdateOrderStatusDto } from './orders.dto.js';
 import { OrdersService } from './orders.service.js';
 
@@ -25,8 +27,8 @@ export class OrdersController {
 
   @Get()
   @Auth()
-  findAll(@CurrentUser() user: AuthUser) {
-    return this.orders.findAll(user);
+  findAll(@CurrentUser() user: AuthUser, @Query() query: PageQueryDto) {
+    return this.orders.findAll(user, query);
   }
 
   @Get(':id')

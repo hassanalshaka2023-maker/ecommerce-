@@ -6,7 +6,11 @@ import { ProductsService } from './products.service.js';
 import { WarehouseModule } from '../warehouse/warehouse.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product]), WarehouseModule],
+  imports: [
+    TypeOrmModule.forFeature([Product]),
+    TypeOrmModule.forFeature([Product], 'replica'),
+    WarehouseModule,
+  ],
   controllers: [ProductsController],
   providers: [ProductsService],
   exports: [ProductsService],

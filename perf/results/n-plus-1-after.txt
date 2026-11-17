@@ -1,0 +1,5 @@
+GET /orders (page of 10) with ONE items query for the whole page: SQL printed by the API (DB_LOGGING=true)
+
+query: SELECT "Order"."id" AS "Order_id", "Order"."user_id" AS "Order_user_id", "Order"."status" AS "Order_status", "Order"."total_price" AS "Order_total_price", "Order"."created_at" AS "Order_created_at", "Order"."updated_at" AS 
+query: SELECT COUNT(1) AS "cnt" FROM "orders" "Order" WHERE (("Order"."user_id" = $1)) -- PARAMETERS: ["53825f90-9b97-48d5-ab7e-0c382b136265"]
+query: SELECT "OrderItem"."id" AS "OrderItem_id", "OrderItem"."order_id" AS "OrderItem_order_id", "OrderItem"."product_id" AS "OrderItem_product_id", "OrderItem"."quantity" AS "OrderItem_quantity", "OrderItem"."unit_price" AS "Ord

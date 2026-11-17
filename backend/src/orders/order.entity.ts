@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -20,6 +21,8 @@ export enum OrderStatus {
 
 // Users and products belong to other modules, so we keep only their ids here.
 @Entity('orders')
+// "My orders, newest first" is answered from this index alone.
+@Index(['userId', 'createdAt'])
 export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -33,10 +36,7 @@ export class Order {
   @Column({ name: 'total_price', type: 'decimal', precision: 10, scale: 2 })
   totalPrice: string;
 
-  @OneToMany(() => OrderItem, (item) => item.order, {
-    cascade: true,
-    eager: true,
-  })
+  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];
 
   @CreateDateColumn({ name: 'created_at' })
@@ -57,6 +57,10 @@ export class OrderItem {
   })
   @JoinColumn({ name: 'order_id' })
   order: Relation<Order>;
+
+  @Index()
+  @Column({ name: 'order_id', type: 'uuid' })
+  orderId: string;
 
   @Column({ name: 'product_id', type: 'uuid' })
   productId: string;

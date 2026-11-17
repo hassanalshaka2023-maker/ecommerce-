@@ -1,14 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import {
   IsInt,
   IsOptional,
   IsString,
   Length,
   Matches,
-  Max,
   Min,
 } from 'class-validator';
+import { PageQueryDto } from '../common/page-query.dto.js';
 
 export class CreateProductDto {
   @Length(1, 150)
@@ -30,24 +29,17 @@ export class CreateProductDto {
   image?: unknown;
 }
 
-export class QueryProductsDto {
+// Same rules as creating a product, but every field is optional and there is no image.
+export class UpdateProductDto extends PartialType(
+  OmitType(CreateProductDto, ['image']),
+) {}
+
+export class QueryProductsDto extends PageQueryDto {
   @IsOptional()
   @IsString()
   category?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(50)
-  limit?: number;
 }
+
 export class SetStockDto {
   @IsInt()
   @Min(0)

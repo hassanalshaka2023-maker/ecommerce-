@@ -1,0 +1,40 @@
+
+ RUN  v4.1.12 C:/Users/DELL/Desktop/E-commerce-project/local/backend
+
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > puts the version in the path 20ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > returns every error in the same shape 9ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > serves interactive Swagger docs 3ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > API rules > sends the basic security headers 5ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > users > registers new users as customers and rejects duplicate emails 76ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > users > rejects invalid input with 422, including trying to set the role 7ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > users > logs in with the right password only 186ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > lets only an admin add products 86ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > stores the uploaded image and serves it back 18ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > rejects non-image files and invalid prices with 422 8ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > lists products publicly, filtered by category and paginated 47ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > products > returns 404 for an unknown id and 400 for a malformed one 7ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > creates an order and computes the total on the server 113ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > rejects unknown products, duplicated lines and bad quantities with 422 90ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > PROOF: a customer cannot open or change an order that is not theirs 215ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > validates status changes 95ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > orders > lists only your own orders, while an admin sees everyone’s 260ms
+ ✓ test/requirement1.e2e-spec.ts > Requirement 1 — API design & security > notifications > notifies only the order owner, on creation and on status change 195ms
+ ✓ test/requirement1.e2e-spec.ts > login rate limiting > blocks the 6th login attempt within a minute with 429 132ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > lets only an admin set stock, and never below zero 144ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > shows the live stock on the product page 37ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > takes the ordered quantity out of the warehouse 138ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > reserves all items or none, and saves no order when stock is short 156ms
+ ✓ test/requirement2.e2e-spec.ts > Requirement 2 — warehouse service over gRPC > PROOF: 20 customers race for the last unit and exactly one wins 603ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > lets only an admin edit a product, and validates the changes 176ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > PROOF: an edited product shows at once, on its page and in the list 63ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > PROOF: the edit shows at once even while the replica is behind 43ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > PROOF: a customer sees a new order at once even while the replica is behind 123ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > never caches stock: a change in the warehouse shows on the next read 44ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > answers 304 with no body while the product is unchanged, and 200 after it changes 91ms
+ ✓ test/requirement3.e2e-spec.ts > Requirement 3 — performance & caching > returns orders one page at a time 158ms
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  13:57:50
+   Duration  10.77s (transform 273ms, setup 0ms, import 5.91s, tests 4.33s, environment 0ms)
+

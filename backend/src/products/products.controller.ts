@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UnprocessableEntityException,
@@ -22,6 +23,7 @@ import {
   CreateProductDto,
   QueryProductsDto,
   SetStockDto,
+  UpdateProductDto,
 } from './products.dto.js';
 import { ProductsService } from './products.service.js';
 
@@ -67,6 +69,15 @@ export class ProductsController {
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.products.findOne(id);
+  }
+
+  @Patch(':id')
+  @Auth(Role.ADMIN)
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateProductDto,
+  ) {
+    return this.products.update(id, dto);
   }
 
   @Put(':id/stock')
