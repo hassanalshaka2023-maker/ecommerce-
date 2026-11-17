@@ -48,3 +48,8 @@ export class QueryProductsDto {
   @Max(50)
   limit?: number;
 }
+export class SetStockDto {
+  @IsInt()
+  @Min(0)
+  quantity: number;
+}

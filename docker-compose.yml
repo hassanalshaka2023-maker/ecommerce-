@@ -16,12 +16,16 @@ services:
       retries: 10
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      additional_contexts:
+        proto: ./proto
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/ecommerce
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
       ADMIN_EMAIL: admin@shop.local
       ADMIN_PASSWORD: Admin12345
+      WAREHOUSE_URL: warehouse:50051
     ports:
       - "3000:3000"
     volumes:
@@ -30,7 +34,37 @@ services:
       db:
         condition: service_healthy
 
+  warehouse-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: warehouse
+    ports:
+      - "5434:5432"
+    volumes:
+      - warehouse_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 3s
+      retries: 10
+
+  warehouse:
+    build:
+      context: ./warehouse
+      additional_contexts:
+        proto: ./proto
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@warehouse-db:5432/warehouse
+    ports:
+      - "50051:50051"
+    depends_on:
+      warehouse-db:
+        condition: service_healthy
+
+
+
 volumes:
   db_data:
   uploads_data:
+  warehouse_data:
 

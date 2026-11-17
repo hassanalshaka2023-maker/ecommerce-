@@ -73,6 +73,10 @@ describe('Requirement 1 — API design & security', () => {
     adminToken = (await api().post('/api/v1/auth/login').send(ADMIN)).body
       .accessToken;
     productId = (await addProduct(adminToken)).body.id;
+    await api()
+      .put(`/api/v1/products/${productId}/stock`)
+      .auth(adminToken, { type: 'bearer' })
+      .send({ quantity: 1000 });
   });
 
   afterAll(() => app.close());
